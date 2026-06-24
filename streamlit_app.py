@@ -1,30 +1,29 @@
 import streamlit as st
-import requests
+import os
 import json
 
+from app.services.pdf_service import extract_text
+from app.services.gemini_service import generate_mcqs
+
 st.set_page_config(
-page_title="AI Exam Prep Generator",
-page_icon="📚",
-layout="wide"
+    page_title="AI Exam Prep Generator",
+    page_icon="📚",
+    layout="wide"
 )
 
-API_URL = "http://localhost:8000"
-
 # ======================
-
 # SIDEBAR
-
 # ======================
 
 with st.sidebar:
 
     st.title("📚 AI Exam Prep")
 
-st.markdown("---")
+    st.markdown("---")
 
-st.success("AI Powered Learning")
+    st.success("AI Powered Learning")
 
-st.markdown("""
+    st.markdown("""
 ### Features
 
 ✅ PDF Upload
@@ -40,129 +39,129 @@ st.markdown("""
 ✅ Download Result
 """)
 
-st.markdown("---")
+    st.markdown("---")
 
-st.info("Version 1.0")
-
+    st.info("Version 1.0")
 
 # ======================
-
 # MAIN PAGE
-
 # ======================
 
 st.title("📚 AI Exam Prep Generator")
 
 st.markdown(
-"Upload PDF and generate exam preparation material."
+    "Upload PDF and generate exam preparation material."
 )
 
 uploaded_file = st.file_uploader(
-"Choose PDF File",
-type=["pdf"]
+    "Choose PDF File",
+    type=["pdf"]
 )
 
 if uploaded_file:
-
 
     if st.button("🚀 Generate Exam Prep"):
 
         with st.spinner("Processing PDF..."):
 
-            files = {
-                "file": (
-                    uploaded_file.name,
-                    uploaded_file,
-                    "application/pdf"
-                )
-            }
+            try:
 
-        response = requests.post(
-            f"{API_URL}/pdf/upload-pdf",
-            files=files
-        )
-
-        if response.status_code == 200:
-
-            data = response.json()
-
-            st.success("PDF Uploaded Successfully")
-
-            # ======================
-            # METRICS
-            # ======================
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.metric(
-                    "📄 File Name",
-                    data["filename"]
+                os.makedirs(
+                    "uploads",
+                    exist_ok=True
                 )
 
-            with col2:
-                st.metric(
-                    "📊 Characters",
-                    data["characters"]
+                file_path = os.path.join(
+                    "uploads",
+                    uploaded_file.name
                 )
 
-            # ======================
-            # TABS
-            # ======================
-
-            tab1, tab2 = st.tabs(
-                [
-                    "📖 Preview",
-                    "❓ MCQs"
-                ]
-            )
-
-            # ======================
-            # PREVIEW TAB
-            # ======================
-
-            with tab1:
-
-                st.subheader("PDF Preview")
-
-                st.text_area(
-                    "Extracted Text",
-                    data["preview"],
-                    height=450
-                )
-
-            # ======================
-            # MCQ TAB
-            # ======================
-
-            with tab2:
-
-                st.subheader("AI Generated MCQs")
-
-                st.markdown(
-                    data.get(
-                        "mcqs",
-                        "MCQs not generated yet"
+                with open(file_path, "wb") as f:
+                    f.write(
+                        uploaded_file.getbuffer()
                     )
+
+                extracted_text = extract_text(
+                    file_path
                 )
 
-            # ======================
-            # DOWNLOAD BUTTON
-            # ======================
+                mcqs = generate_mcqs(
+                    extracted_text
+                )
 
-            st.download_button(
-                label="📥 Download Result",
-                data=json.dumps(
-                    data,
-                    indent=4
-                ),
-                file_name="exam_prep.json",
-                mime="application/json"
-            )
+                data = {
+                    "filename":
+                    uploaded_file.name,
 
-        else:
+                    "characters":
+                    len(extracted_text),
 
-            st.error(
-                "Backend Error"
-            )
+                    "preview":
+                    extracted_text[:1000],
 
+                    "mcqs":
+                    mcqs
+                }
+
+                st.success(
+                    "PDF Processed Successfully"
+                )
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.metric(
+                        "📄 File Name",
+                        data["filename"]
+                    )
+
+                with col2:
+                    st.metric(
+                        "📊 Characters",
+                        data["characters"]
+                    )
+
+                tab1, tab2 = st.tabs(
+                    [
+                        "📖 Preview",
+                        "❓ MCQs"
+                    ]
+                )
+
+                with tab1:
+
+                    st.subheader(
+                        "PDF Preview"
+                    )
+
+                    st.text_area(
+                        "Extracted Text",
+                        data["preview"],
+                        height=450
+                    )
+
+                with tab2:
+
+                    st.subheader(
+                        "AI Generated MCQs"
+                    )
+
+                    st.markdown(
+                        data["mcqs"]
+                    )
+
+                st.download_button(
+                    label="📥 Download Result",
+                    data=json.dumps(
+                        data,
+                        indent=4
+                    ),
+                    file_name="exam_prep.json",
+                    mime="application/json"
+                )
+
+            except Exception as e:
+
+                st.error(
+                    f"Error: {str(e)}"
+                )
