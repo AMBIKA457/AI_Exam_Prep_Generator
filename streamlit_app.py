@@ -8,6 +8,8 @@ page_icon="📚",
 layout="wide"
 )
 
+API_URL = "http://localhost:8000"
+
 # ======================
 
 # SIDEBAR
@@ -76,7 +78,7 @@ if uploaded_file:
             }
 
         response = requests.post(
-            "http://127.0.0.1:8000/pdf/upload-pdf",
+            f"{API_URL}/pdf/upload-pdf",
             files=files
         )
 

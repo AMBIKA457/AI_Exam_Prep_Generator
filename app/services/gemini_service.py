@@ -9,7 +9,7 @@ api_key=os.getenv("GEMINI_API_KEY")
 )
 
 model = genai.GenerativeModel(
-"gemini-2.5-flash"
+"gemini-1.5-flash"
 )
 
 def generate_mcqs(text):
